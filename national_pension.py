@@ -7,11 +7,9 @@ import seaborn as sns
 import re
 import streamlit as st
 
-# 한글 폰트 설정
-# plt.rcParams['font.family'] = "AppleGothic"
-# Windows, 리눅스 사용자
-plt.rcParams['font.family'] = "NanumGothic"
-# plt.rcParams['axes.unicode_minus'] = False
+# 폰트 설정: 그래프에 한글이 깨지는 문제가 발생하면 영어 폰트로 설정
+plt.rcParams['font.family'] = "DejaVu Sans"
+# plt.rcParams['axes.unicode_minus'] = False  # 필요시 활성화
 
 class PensionData():
     def __init__(self, filepath):
@@ -32,16 +30,15 @@ class PensionData():
         ]
         df = self.df.drop(['자료생성년월', '우편번호', '사업장지번상세주소', '고객법정동주소코드', '고객행정동주소코드', '사업장형태구분코드 1 법인 2 개인', '적용일자', '재등록일자'], axis=1)
         df['사업장명'] = df['사업장명'].apply(self.preprocessing)
-        df['탈퇴일자_연도'] =  pd.to_datetime(df['탈퇴일자']).dt.year
-        df['탈퇴일자_월'] =  pd.to_datetime(df['탈퇴일자']).dt.month
+        df['탈퇴일자_연도'] = pd.to_datetime(df['탈퇴일자']).dt.year
+        df['탈퇴일자_월'] = pd.to_datetime(df['탈퇴일자']).dt.month
         df['시도'] = df['주소'].str.split(' ').str[0]
         df = df.loc[df['가입상태'] == 1].drop(['가입상태', '탈퇴일자'], axis=1).reset_index(drop=True)
         df['인당금액'] = df['금액'] / df['가입자수']
-        df['월급여추정'] =  df['인당금액'] / 9 * 100
+        df['월급여추정'] = df['인당금액'] / 9 * 100
         df['연간급여추정'] = df['월급여추정'] * 12
         self.df = df
 
-        
     def preprocessing(self, x):
         x = re.sub(self.pattern1, '', x)
         x = re.sub(self.pattern2, '', x)
@@ -73,6 +70,7 @@ class PensionData():
 
 @st.cache
 def read_pensiondata():
+    # CSV 파일은 Dropbox 링크로 불러옵니다.
     data = PensionData('https://www.dropbox.com/s/nxeo1tziv05ejz7/national-pension.csv?dl=1')
     return data
 
@@ -117,8 +115,8 @@ if data and company_name:
 
         st.markdown(f"""
         - 업종 **평균 월급여**는 `{int(comp_output.iloc[0, 0]):,}` 원, **평균 연봉**은 `{int(comp_output.iloc[1, 0]):,}` 원 입니다.
-        - `{company_name}`는 평균 보다 `{int(diff_month):,}` 원, :red[약 {percent_value:.2f} %] `{upordown}` `{int(info['월급여추정']):,}` 원을 **월 평균 급여**를 받는 것으로 추정합니다.
-        - `{company_name}`는 평균 보다 `{int(diff_year):,}` 원 `{upordown}` `{int(info['연간급여추정']):,}` 원을 **연봉**을 받는 것으로 추정합니다.
+        - `{company_name}`는 평균 보다 `{int(diff_month):,}` 원, :red[약 {percent_value:.2f} %] `{upordown}` `{int(info['월급여추정']):,}` 원을 **월 평균 급여**로 받고 있는 것으로 추정합니다.
+        - `{company_name}`는 평균 보다 `{int(diff_year):,}` 원 `{upordown}` `{int(info['연간급여추정']):,}` 원을 **연봉**으로 받고 있는 것으로 추정합니다.
         """)
 
         fig, ax = plt.subplots(1, 2)
@@ -144,10 +142,7 @@ if data and company_name:
 
         st.markdown('### 동종업계')
         df = data.get_data()
-        st.dataframe(df.loc[df['업종코드'] == info['업종코드'], ['사업장명', '월급여추정', '연간급여추정', '가입자수']]\
-            .sort_values('연간급여추정', ascending=False).head(10).round(0), 
-            use_container_width=True
-        )
+        st.dataframe(df.loc[df['업종코드'] == info['업종코드'], ['사업장명', '월급여추정', '연간급여추정', '가입자수']].sort_values('연간급여추정', ascending=False).head(10).round(0), use_container_width=True)
         
     else:
         st.subheader('검색결과가 없습니다')
